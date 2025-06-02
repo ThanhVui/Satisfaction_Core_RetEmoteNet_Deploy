@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion Detection Results</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Gradient background for the page */
+        body {
+            background: linear-gradient(135deg, #e0e7ff 0%, #f3f4f6 100%);
+        }
+
+        /* Smooth hover effects for navigation links */
+        .nav-link {
+            transition: all 0.3s ease;
+        }
+        .nav-link:hover {
+            text-decoration: underline;
+            color: #bfdbfe; /* Softer blue on hover */
+            transform: translateY(-2px);
+            display: inline-block;
+        }
+
+        /* Enhanced button styles */
+        .btn-upload {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-upload:hover {
+            background-color: #1d4ed8; /* Darker blue on hover */
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        /* File input enhancement */
+        .custom-file-input::-webkit-file-upload-button {
+            visibility: hidden;
+        }
+        .custom-file-input::before {
+            content: 'Choose Image';
+            display: inline-block;
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .custom-file-input:hover::before {
+            background: #bfdbfe;
+        }
+        .custom-file-input:active::before {
+            background: #93c5fd;
+        }
+
+        /* Logo styling */
+        .nav-logo {
+            height: 40px; /* Adjust based on your logo's dimensions */
+            transition: transform 0.3s ease;
+        }
+        .nav-logo:hover {
+            transform: scale(1.05); /* Slight zoom on hover */
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .form-container {
+                padding: 1.5rem;
+                max-width: 90%;
+            }
+            .nav-logo {
+                height: 32px; /* Smaller logo on mobile */
+            }
+            .nav-links {
+                space-x-4; /* Reduce spacing between links on mobile */
+            }
+        }
+
+        /* Custom styles for fixed image frame */
+        .image-frame {
+            max-width: 800px; /* Fixed maximum width */
+            width: 100%; /* Ensures responsiveness within the max-width */
+            height: 600px; /* Fixed height */
+            object-fit: contain; /* Maintains aspect ratio within the frame */
+            border: 2px solid #4b5563; /* Subtle gray border */
+            border-radius: 8px; /* Rounded corners */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Soft shadow for depth */
+            background-color: #f9fafb; /* Light background for contrast */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+    <!-- Header Bar -->
+    <nav class="bg-blue-700 p-2 shadow-lg" style="position: fixed; top: 0; left: 0; right: 0; z-index: 10;">
+        <div class="container mx-auto flex items-center justify-between">
+            <!-- Logo -->
+            <a href="{{ url_for('upload_image') }}">
+                <img style="border-radius: 10px; height: 50px; width: 120px; padding: 0;" src="{{ url_for('static', filename='uploads/THD-Logo.png') }}" alt="Emotion Detection Logo" class="nav-logo">
+            </a>
+            <!-- Navigation Links -->
+            <div class="flex space-x-8 nav-links">
+                <a href="{{ url_for('upload_image') }}" class="text-white font-semibold text-lg nav-link">Image Upload</a>
+                <a href="{{ url_for('upload_video') }}" class="text-white font-semibold text-lg nav-link">Video Upload</a>
+                <a href="{{ url_for('camera_feed') }}" class="text-white font-semibold text-lg nav-link">Camera Feed</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mx-auto p-20">
+        <h1 class="text-4xl font-bold text-gray-800 mb-8 text-center">Emotion Detection Results</h1>
+        <div class="flex justify-center mb-8">
+            <div class="image-frame">
+                <img src="{{ url_for('static', filename='uploads/' + output_image) }}"
+                     alt="Processed Image"
+                     class="w-full h-full object-contain rounded-lg" />
+            </div>
+        </div>
+        <!-- Results Table -->
+        {% if results %}
+        <div class="mt-8 w-full max-w-4xl mx-auto overflow-x-auto">
+            <table class="min-w-full bg-white rounded-lg shadow-md">
+                <thead>
+                    <tr class="bg-blue-100 text-blue-800">
+                        <th class="px-6 py-3 text-left font-semibold">Face ID</th>
+                        <th class="px-6 py-3 text-left font-semibold">Dominant Emotion</th>
+                        <th class="px-6 py-3 text-left font-semibold">Confidence (%)</th>
+                        <th class="px-6 py-3 text-left font-semibold">Satisfaction Index</th>
+                        <th class="px-6 py-3 text-left font-semibold">Satisfaction Name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for face in results %}
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition duration-150">
+                        <td class="px-6 py-4">{{ face.face_id }}</td>
+                        <td class="px-6 py-4">{{ face.max_emotion }}</td>
+                        <td class="px-6 py-4">{{ face.confidence }}</td>
+                        <td class="px-6 py-4">{{ face.satisfaction_index }}</td>
+                        <td class="px-6 py-4">{{ face.satisfaction_category }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-center text-gray-600 mt-8">No faces detected or no results available.</p>
+        {% endif %}
+        <div class="text-center mt-8">
+            <a href="{{ url_for('upload_image') }}"
+               class="bg-blue-600 text-white py-3 px-6 rounded-lg font-medium text-lg btn-upload transition duration-200">
+                Upload Another Image
+            </a>
+        </div>
+    </div>
+</body>
+</html>
