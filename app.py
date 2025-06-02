@@ -298,6 +298,7 @@ def detect_bounding_box(image, use_mediapipe=True):
 
 def process_frame(frame, frame_id, results=None):
     try:
+        frame = cv2.resize(frame, (640, 480))  # Giảm độ phân giải
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         faces, emotion_scores_dict = detect_bounding_box(frame_rgb)
         frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
@@ -392,6 +393,14 @@ def generate_video_feed(video_path):
             ret, frame = cap.read()
             if not ret:
                 break
+            if frame_id % 3 != 0:  # Chỉ xử lý mỗi 3 khung hình
+                ret, buffer = cv2.imencode('.jpg', frame)
+                if ret:
+                    frame_bytes = buffer.tobytes()
+                    yield (b'--frame\r\n'
+                           b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+                frame_id += 1
+                continue
             processed_frame = process_frame(frame, frame_id)
             ret, buffer = cv2.imencode('.jpg', processed_frame)
             if not ret:
@@ -442,5 +451,4 @@ def video_stream():
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__':
-    # app.run(debug=True, host='0.0.0.0', port=5000) # For local testing
-    app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) # For deployment
+    app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
