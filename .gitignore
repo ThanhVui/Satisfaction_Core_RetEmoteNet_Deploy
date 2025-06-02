@@ -1,12 +1,3 @@
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
 .Python
-env/
-venv/
-*.log
-*.env
-*.pth
 static/uploads/*.mp4
 static/uploads/*.jpg
