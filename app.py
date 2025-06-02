@@ -163,19 +163,28 @@ print(f"Using {device}")
 
 class_labels = ['Happy', 'Surprise', 'Sad', 'Anger', 'Disgust', 'Fear', 'Neutral']
 
-model = ResEmoteNet(num_classes=7).to(device)
-model_path = "./models/best_model_resemotenet_80.pth"
-if not os.path.exists(model_path):
-    model_path = "./models/final_model_resemotenet_80.pth"
-    print("Best model not found, using final model.")
-if not os.path.exists(model_path):
-    raise FileNotFoundError(f"No model found at {model_path}")
-model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
-model.eval()
+model = None
 
-final_layer = model.conv3
+def load_model():
+    global model
+    if model is None:
+        model = ResEmoteNet(num_classes=7).to(device)
+        model_path = "./models/best_model_resemotenet_80.pth"
+        if not os.path.exists(model_path):
+            model_path = "./models/final_model_resemotenet_80.pth"
+            print("Best model not found, using final model.")
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"No model found at {model_path}")
+        model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
+        model.eval()
+    return model
+
 hook = Hook()
-hook.register_hook(final_layer)
+
+def load_hook():
+    model = load_model()
+    final_layer = model.conv3
+    hook.register_hook(final_layer)
 
 transform = transforms.Compose([
     transforms.Resize((64, 64)),
@@ -195,6 +204,8 @@ def detect_emotion(pil_crop_img):
     try:
         if not isinstance(pil_crop_img, Image.Image):
             raise TypeError(f"Expected PIL.Image.Image, got {type(pil_crop_img)}")
+        load_hook()  # Đảm bảo hook được đăng ký
+        model = load_model()
         vid_fr_tensor = transform(pil_crop_img).unsqueeze(0).to(device)
         logits = model(vid_fr_tensor)
         probabilities = F.softmax(logits, dim=1)
@@ -291,14 +302,14 @@ def detect_bounding_box(image, use_mediapipe=True):
                     max_emotion = update_max_emotion(rounded_scores)
                     plot_heatmap(x1, y1, x2 - x1, y2 - y1, cam, pil_crop_img, image)
                     print_max_emotion(x1, y1, max_emotion, image, confidence, si_normalized, category)
-        return faces, emotion_scores_dict
+            return faces, emotion_scores_dict
     except Exception as e:
         print(f"Error in detect_bounding_box: {e}")
         return {}, {}
 
 def process_frame(frame, frame_id, results=None):
     try:
-        frame = cv2.resize(frame, (640, 480))  # Giảm độ phân giải
+        frame = cv2.resize(frame, (480, 360))  # Giảm độ phân giải
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         faces, emotion_scores_dict = detect_bounding_box(frame_rgb)
         frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
@@ -376,7 +387,6 @@ def upload_video():
             filename = str(uuid.uuid4()) + '.mp4'
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
-            # Store the filepath in session or pass to the streaming route
             return render_template('video_stream.html', video_path=filepath)
     return render_template('video_upload.html')
 
@@ -393,7 +403,7 @@ def generate_video_feed(video_path):
             ret, frame = cap.read()
             if not ret:
                 break
-            if frame_id % 3 != 0:  # Chỉ xử lý mỗi 3 khung hình
+            if frame_id % 5 != 0:  # Chỉ xử lý mỗi 5 khung hình
                 ret, buffer = cv2.imencode('.jpg', frame)
                 if ret:
                     frame_bytes = buffer.tobytes()
@@ -451,4 +461,4 @@ def video_stream():
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 4000)))
